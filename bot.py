@@ -1,4 +1,5 @@
 from reddit import redditScrapper
+import lorem
 
-app = redditScrapper()
-app.getRedditPostAsImage()
+app = redditScrapper("askreddit")
+app.getRedditPostAsImage(postCount=4, commentCount=1, filter="all", saveOnCreate = True)
