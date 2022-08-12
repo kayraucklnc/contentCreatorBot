@@ -1,5 +1,6 @@
 from reddit import redditScrapper
-import lorem
 
 app = redditScrapper("askreddit")
-app.getRedditPostAsImage(postCount=4, commentCount=1, filter="all", saveOnCreate = True)
+for i, k in enumerate(app.getRedditPostAsImage(postCount=3, commentCount=3, filter="hour")):
+    k.save("outputs/" + str(i) + ".jpg")
+

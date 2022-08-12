@@ -156,7 +156,7 @@ class redditScrapper:
                 self.textHeight = self.setHeight(commentBody)
                 self.blurBox(commentImage)
                 self.addText(commentBody, commentImage, "#ffffff")
-                self.addCustomText(bg, human_format(comment.score), (self.elementPadding + 30, int(self.imageSize/2-self.textHeight/2+self.elementPadding + 85)), "#fa6505")
+                self.addCustomText(commentImage, human_format(comment.score), (self.elementPadding + 30, int(self.imageSize/2-self.textHeight/2+self.elementPadding + 85)), "#fa6505")
                 self.addCustomText(commentImage, "/u/" + comment.author.name if comment.author else "[deleted]", (self.imageSize - self.elementPadding, int(self.imageSize/2+self.textHeight/2-self.elementPadding)), "#ffffff", textAnchor = "rs")
                 self.addIcon(self.sub, commentImage, int(self.imageSize/2-self.textHeight/2+self.elementPadding), icon)
                 
