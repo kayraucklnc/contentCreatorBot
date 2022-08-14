@@ -1,4 +1,4 @@
-import imp
+import praw
 from re import sub
 from tkinter.messagebox import NO
 import praw
@@ -9,7 +9,9 @@ from io import BytesIO
 from PIL import ImageDraw, ImageFont, Image, ImageFilter
 import numpy as np
 from util import human_format
+from better_profanity import profanity
 import time
+
 
 
 class redditScrapper:
@@ -46,6 +48,7 @@ class redditScrapper:
         return max(lineCount, 2)*29 + self.elementPadding*2 + 50
 
     def addText(self, text, image, textColor = "#ffffff"):
+        text = profanity.censor(text)
         draw = ImageDraw.Draw(image)
         
         
@@ -56,6 +59,7 @@ class redditScrapper:
             offset += self.font.getbbox(line)[3]
 
     def addCustomText(self, image, text, pos = (0, 0), textColor = "#ffffff", textAnchor = "ms"):
+        text = profanity.censor(text)
         draw = ImageDraw.Draw(image)
         draw.text(pos, text, textColor, font=self.smallFont, anchor = textAnchor)
 
