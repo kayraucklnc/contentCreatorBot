@@ -15,7 +15,7 @@ async def unload(ctx, extension):
     client.unload_extension(f"cogs.{extension}")
     
 async def load_extensions():
-    for filename in os.listdir("discordCogs/cogs"):
+    for filename in os.listdir("scripts/cogs"):
         if filename.endswith(".py"):
             # cut off the .py from the file name
             await client.load_extension(f"cogs.{filename[:-3]}")

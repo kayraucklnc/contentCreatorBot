@@ -1,7 +1,4 @@
 import praw
-from re import sub
-from tkinter.messagebox import NO
-import praw
 import textwrap
 from PIL import Image, ImageEnhance
 import requests
@@ -12,6 +9,30 @@ from util import human_format
 from better_profanity import profanity
 import time
 
+class TestSubmission:
+    class author:
+        def __init__(self):
+            self.name = "TestAuthor"
+    
+    def __init__(self):
+        time.sleep(2)
+        self.title = "Test"
+        self.num_comments = 3600
+        self.score = 25000
+        self.author = TestSubmission.author()
+        self.comments = list()
+        self.icon_img = "https://www.anatolihome.com/image/cache/catalog/products/8680571800562/1-250x250.jpg"
+
+
+
+class PostSubmission:
+    def __init__(self, title, author, img, icon_img, isPost = True):
+        self.title = title
+        self.author = author
+        self.img = img
+        self.icon_img = icon_img
+        self.isPost = isPost
+    
 
 
 class redditScrapper:
@@ -33,12 +54,16 @@ class redditScrapper:
             client_id="CY6H6O3ng77h5rjiQNpXeg",
             client_secret="n-cxPtR1QezeZGAu8GruZudbAGU4BQ",
             user_agent="com.personalApp:0.0.1 by /u/enguzelharf",
+            check_for_async=False
             )
+        
 
 
     def resetBG(self, res):
-        response = requests.get('https://picsum.photos/' + str(res))
-        self.background = Image.open(BytesIO(response.content))
+        # response = requests.get('https://picsum.photos/' + str(res))
+        # response = requests.get(f"https://picsum.photos/{res}/{res}")
+        # self.background = Image.open(BytesIO(response.content))
+        self.background = Image.open("./outputs/pic.jpg")
         enhancer = ImageEnhance.Brightness(self.background)
         self.background = enhancer.enhance(0.6)
         
@@ -50,7 +75,6 @@ class redditScrapper:
     def addText(self, text, image, textColor = "#ffffff"):
         text = profanity.censor(text)
         draw = ImageDraw.Draw(image)
-        
         
         margin = self.textLeftPadding
         offset = self.imageSize/2 - self.textHeight/2 + self.elementPadding
@@ -90,14 +114,10 @@ class redditScrapper:
             ic = ic.filter(ImageFilter.BLUR)
         image.paste(ic, box)
 
-    def addIcon(self, sub, image, posY, foundImage = None):
-        logo = None
-        if(foundImage == None):
-            response = requests.get(self.reddit.subreddit(sub).icon_img)
-            logo = Image.open(BytesIO(response.content))
-        else:
-            logo = foundImage
-            
+    def addIcon(self, iconPath, image, posY):
+        response = requests.get(iconPath)
+        
+        logo = Image.open(BytesIO(response.content))
         logo = logo.resize((60,60))
         
         # Create same size alpha layer with circle
@@ -128,26 +148,31 @@ class redditScrapper:
         bg.show()
         return bg
         
-    def getRedditPostAsImage(self, filter = "day", postCount = 1, commentCount = 4, saveOnCreate = False):
-        listOfImages = []  
-        for submission in self.reddit.subreddit(self.sub).top(time_filter=filter, limit=postCount):
+    def getRedditPostAsImage(self, filter = "day", postCount = 1, commentCount = 4, saveOnCreate = False, isTesting = False):
+        time.sleep(10)
+        listOfPosts = []
+        print("Gather Post Started")
+        submissionArray = [TestSubmission() for i in range(postCount)] if isTesting else self.reddit.subreddit(self.sub).top(time_filter=filter, limit=postCount)
+        subIconPath = TestSubmission().icon_img if isTesting else self.reddit.subreddit(self.sub)
+            
+        for submission in submissionArray:
             self.resetBG(self.imageSize)
             title = submission.title
+            name = submission.author.name if submission.author != None else "Unknown"
             bg = self.background.copy()
             self.textHeight = self.setHeight(title)
             self.blurBox(bg)
             self.addText(title, bg)
-            icon = self.addIcon(self.sub, bg, int(self.imageSize/2-self.textHeight/2+self.elementPadding))
+            self.addIcon(subIconPath, bg, int(self.imageSize/2-self.textHeight/2+self.elementPadding))
             self.addCustomText(bg, human_format(submission.score), (self.elementPadding + 30, int(self.imageSize/2-self.textHeight/2+self.elementPadding + 85)), "#fa6505")
-            self.addCustomText(bg, "/u/" + submission.author.name, (self.imageSize - self.elementPadding, int(self.imageSize/2+self.textHeight/2-self.elementPadding)), "#ffffff", textAnchor = "rs")
+            self.addCustomText(bg, "/u/" + name, (self.imageSize - self.elementPadding, int(self.imageSize/2+self.textHeight/2-self.elementPadding)), "#ffffff", textAnchor = "rs")
             self.addCustomText(bg, human_format(submission.num_comments), (self.elementPadding + 30, int(self.imageSize/2-self.textHeight/2+self.elementPadding + 110)), "#39ceff")
             
             
             if(saveOnCreate):
                 bg.save("outputs/" + str(int(round(time.time() * 1000))) + " - " +  submission.author.name + ".jpg")
             else:
-                listOfImages.append(bg)
-            print(submission.author.name + " is finished!")
+                listOfPosts.append(PostSubmission(title, name, bg, subIconPath))
             
             for count, comment in enumerate(submission.comments):
                 if(commentCount == count):
@@ -155,18 +180,24 @@ class redditScrapper:
                 
                 print(comment.body)
                 commentBody = comment.body
+                commentAuthorName = comment.author.name if comment.author else "[deleted]"
                 commentImage = self.background.copy()                
                 
                 self.textHeight = self.setHeight(commentBody)
                 self.blurBox(commentImage)
                 self.addText(commentBody, commentImage, "#ffffff")
                 self.addCustomText(commentImage, human_format(comment.score), (self.elementPadding + 30, int(self.imageSize/2-self.textHeight/2+self.elementPadding + 85)), "#fa6505")
-                self.addCustomText(commentImage, "/u/" + comment.author.name if comment.author else "[deleted]", (self.imageSize - self.elementPadding, int(self.imageSize/2+self.textHeight/2-self.elementPadding)), "#ffffff", textAnchor = "rs")
-                self.addIcon(self.sub, commentImage, int(self.imageSize/2-self.textHeight/2+self.elementPadding), icon)
-                
+                self.addCustomText(commentImage, "/u/" + commentAuthorName, (self.imageSize - self.elementPadding, int(self.imageSize/2+self.textHeight/2-self.elementPadding)), "#ffffff", textAnchor = "rs")
+                self.addIcon(subIconPath, commentImage, int(self.imageSize/2-self.textHeight/2+self.elementPadding))
+                   
                 if(saveOnCreate):
                     commentImage.save("outputs/" + str(int(round(time.time() * 1000))) + " - " +  submission.author.name + ".jpg")
                 else:
-                    listOfImages.append(commentImage)
+                    listOfPosts.append(PostSubmission(str(count), commentAuthorName, commentImage, subIconPath, False))
             
-        return listOfImages
+            
+            
+            print(submission.author.name + "post is finished!")
+
+
+        return listOfPosts
