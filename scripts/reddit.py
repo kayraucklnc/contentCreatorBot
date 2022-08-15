@@ -149,7 +149,6 @@ class redditScrapper:
         return bg
         
     def getRedditPostAsImage(self, filter = "day", postCount = 1, commentCount = 4, saveOnCreate = False, isTesting = False):
-        time.sleep(10)
         listOfPosts = []
         print("Gather Post Started")
         submissionArray = [TestSubmission() for i in range(postCount)] if isTesting else self.reddit.subreddit(self.sub).top(time_filter=filter, limit=postCount)
@@ -185,7 +184,7 @@ class redditScrapper:
                 
                 self.textHeight = self.setHeight(commentBody)
                 self.blurBox(commentImage)
-                self.addText(commentBody, commentImage, "#ffffff")
+                self.addText(commentBody, commentImage, "#c9c9c9")
                 self.addCustomText(commentImage, human_format(comment.score), (self.elementPadding + 30, int(self.imageSize/2-self.textHeight/2+self.elementPadding + 85)), "#fa6505")
                 self.addCustomText(commentImage, "/u/" + commentAuthorName, (self.imageSize - self.elementPadding, int(self.imageSize/2+self.textHeight/2-self.elementPadding)), "#ffffff", textAnchor = "rs")
                 self.addIcon(subIconPath, commentImage, int(self.imageSize/2-self.textHeight/2+self.elementPadding))
@@ -193,7 +192,7 @@ class redditScrapper:
                 if(saveOnCreate):
                     commentImage.save("outputs/" + str(int(round(time.time() * 1000))) + " - " +  submission.author.name + ".jpg")
                 else:
-                    listOfPosts.append(PostSubmission(str(count), commentAuthorName, commentImage, subIconPath, False))
+                    listOfPosts.append(PostSubmission(f"{title} - {str(count)}", commentAuthorName, commentImage, subIconPath, False))
             
             
             
