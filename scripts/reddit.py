@@ -1,3 +1,4 @@
+from cgi import test
 import praw
 import textwrap
 from PIL import Image, ImageEnhance
@@ -58,21 +59,25 @@ class redditScrapper:
             )
         
 
-
+    def changeSub(self, sub):
+        self.sub = sub
+        
+    
     def resetBG(self, res):
-        # response = requests.get('https://picsum.photos/' + str(res))
+        response = requests.get('https://picsum.photos/' + str(res))
         # response = requests.get(f"https://picsum.photos/{res}/{res}")
-        # self.background = Image.open(BytesIO(response.content))
-        self.background = Image.open("./outputs/pic.jpg")
+        self.background = Image.open(BytesIO(response.content))
+        # self.background = Image.open("./outputs/pic.jpg")
         enhancer = ImageEnhance.Brightness(self.background)
         self.background = enhancer.enhance(0.6)
         
         
-    def setHeight(self, text):
-        lineCount = len(textwrap.wrap(text, width=self.textWrapLen))
-        return max(lineCount, 2)*29 + self.elementPadding*2 + 50
+    def setHeight(self, text, content=None):
+        content = content if content else ""
+        lineCount = len(textwrap.wrap(text + content, width=self.textWrapLen))
+        return max(lineCount + 2, 2)*29 + self.elementPadding*2 + 50
 
-    def addText(self, text, image, textColor = "#ffffff"):
+    def addText(self, text, image, textColor = "#ffffff", content = None):
         text = profanity.censor(text)
         draw = ImageDraw.Draw(image)
         
@@ -81,6 +86,12 @@ class redditScrapper:
         for line in textwrap.wrap(text, width=self.textWrapLen):
             draw.text((margin, offset), line, textColor, font=self.font)
             offset += self.font.getbbox(line)[3]
+        
+        if(content):
+            content = profanity.censor(content)
+            for line in textwrap.wrap(content, width=self.textWrapLen):
+                draw.text((margin, offset+29), line, "#CBCBCC", font=self.font)
+                offset += self.font.getbbox(line)[3]
 
     def addCustomText(self, image, text, pos = (0, 0), textColor = "#ffffff", textAnchor = "ms"):
         text = profanity.censor(text)
@@ -132,7 +143,10 @@ class redditScrapper:
         npImage=np.array(logo)
         npImage=np.dstack((npImage,npAlpha))
 
-        image.paste(Image.fromarray(npImage), (self.elementPadding, posY), Image.fromarray(npImage))
+        try:
+            image.paste(Image.fromarray(npImage), (self.elementPadding, posY), Image.fromarray(npImage))
+        except:
+            pass
         
         return logo
 
@@ -151,17 +165,20 @@ class redditScrapper:
     def getRedditPostAsImage(self, filter = "day", postCount = 1, commentCount = 4, saveOnCreate = False, isTesting = False):
         listOfPosts = []
         print("Gather Post Started")
-        submissionArray = [TestSubmission() for i in range(postCount)] if isTesting else self.reddit.subreddit(self.sub).top(time_filter=filter, limit=postCount)
-        subIconPath = TestSubmission().icon_img if isTesting else self.reddit.subreddit(self.sub)
+        subredditHelper = self.reddit.subreddit(self.sub)
+        
+        submissionArray = [TestSubmission() for i in range(postCount)] if isTesting else subredditHelper.top(time_filter=filter, limit=postCount)
+        subIconPath = TestSubmission().icon_img if (isTesting or (len(subredditHelper.icon_img) < 8 )) else subredditHelper.icon_img
             
         for submission in submissionArray:
             self.resetBG(self.imageSize)
             title = submission.title
+            content = submission.selftext
             name = submission.author.name if submission.author != None else "Unknown"
             bg = self.background.copy()
-            self.textHeight = self.setHeight(title)
+            self.textHeight = self.setHeight(title, content)
             self.blurBox(bg)
-            self.addText(title, bg)
+            self.addText(title, bg, content=content)
             self.addIcon(subIconPath, bg, int(self.imageSize/2-self.textHeight/2+self.elementPadding))
             self.addCustomText(bg, human_format(submission.score), (self.elementPadding + 30, int(self.imageSize/2-self.textHeight/2+self.elementPadding + 85)), "#fa6505")
             self.addCustomText(bg, "/u/" + name, (self.imageSize - self.elementPadding, int(self.imageSize/2+self.textHeight/2-self.elementPadding)), "#ffffff", textAnchor = "rs")
@@ -177,7 +194,6 @@ class redditScrapper:
                 if(commentCount == count):
                     break
                 
-                print(comment.body)
                 commentBody = comment.body
                 commentAuthorName = comment.author.name if comment.author else "[deleted]"
                 commentImage = self.background.copy()                

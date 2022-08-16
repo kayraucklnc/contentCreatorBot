@@ -9,8 +9,12 @@ class InstaBot:
     
 
     def uploadAlbum(self, paths, caption):
-        print("Album is uploaded")
+        print(f"Album is uploaded - {paths} - {caption}")
         # self.cl.album_upload(
         #     paths,
         #     caption,
         # )
+        return "https://www.reddit.com/r/AskReddit/"
+        
+    def deleteAlbum(self, path):
+        print(f"Album deleted - {path}")

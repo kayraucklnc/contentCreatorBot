@@ -1,25 +1,41 @@
+from ast import Delete
+from hmac import digest
 from instagramBot import InstaBot
 import traceback
 import io
+import time
 import discord
 from discord.ext import commands, tasks
 from reddit import redditScrapper
 
-class Controller(commands.Cog):
-    
-    class Settings:
-        def __init__(self):
-            self.commentAmount = 4
-            self.scrapTime = 30
-    
-    
+class Settings:
+    def __init__(self):
+        self.commentAmount = 2
+        self.printerDelta = 60*1.6
+        self.digestDelta = 60*0.7
+        self.filterTime = "month"
+        self.subs = ["relationships", "explainlikeimfive", "outoftheloop", "tooafraidtoask", "askwomen", "showerthoughts", "askscience", "confessions", "askmen", "askreddit"]
+        self.subs = ["askreddit", "showerthoughts", "askmen", "explainlikeimfive", "tooafraidtoask", "jokes", "unethicallifeprotips", "crazyideas"]
+        self.mode = len(self.subs)-1
+        
+    def getSub(self):
+        self.mode += 1
+        self.mode = self.mode % len(self.subs)
+        return self.subs[self.mode]
+
+settings = Settings()
+settings.mode = 5
+instaBot = InstaBot()
+
+
+class Controller(commands.Cog):   
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.index = 0
-        self.reddit = redditScrapper("askreddit")
+        self.reddit = redditScrapper(settings.getSub())
         self.printer.start()
+        self.digester.start()
         self.bot.loop.create_task(self.setChannelIds())
-        self.settings = self.Settings()
         
         
     async def setChannelIds(self):
@@ -28,7 +44,7 @@ class Controller(commands.Cog):
 
         self.general = self.bot.get_channel(1008439697678287010)
         self.upcoming = self.bot.get_channel(1008464497574428803)
-        self.posted = self.bot.get_channel(1008812540744192120)
+        self.posted = self.bot.get_channel(1008812515339276430)
         self.deleted = self.bot.get_channel(1008812540744192120)
 
 
@@ -45,61 +61,99 @@ class Controller(commands.Cog):
         await ctx.channel.purge()
 
 
-    @tasks.loop(seconds=40.0)
+    @tasks.loop(seconds=settings.printerDelta)
     async def printer(self):
-        view = CustomView()
+        view = UpcomingView()
         try:
             print("------- Creating Images -------")
-            # postArr = self.reddit.getRedditPostAsImage(postCount=1, commentCount=self.settings.commentAmount, filter="day", isTesting=True)
-
-            # print("Sending Images now!")
-            # for post in postArr:
-            #     with io.BytesIO() as image_binary:
-            #                 post.img.save(image_binary, 'PNG')
-            #                 image_binary.seek(0)
-            #                 await self.upcoming.send(post.title, file=discord.File(fp=image_binary, filename='image.png'), view=view)
-            # print("Images sent")
+            postArr = self.reddit.getRedditPostAsImage(postCount=1, commentCount=settings.commentAmount, filter=settings.filterTime, isTesting=False)
+            self.reddit.changeSub(settings.getSub())
             
-            await self.upcoming.send("Test", view=view)
+            print("Sending Images now!")
+            listOfImgs = []
+            for post in postArr:
+                with io.BytesIO() as image_binary:
+                            post.img.save(image_binary, 'PNG')
+                            image_binary.seek(0)
+                            listOfImgs.append(discord.File(fp=image_binary, filename=f'{post.title}.png'))
+                   
+            await self.upcoming.send(postArr[0].title,files=listOfImgs, view=view)
+            print("Images sent")
             
             
         except Exception as e:
             await self.general.send(f"Failed 😥 \n {e}")
+            print(traceback.format_exc())
+            
+            
+    @tasks.loop(seconds=settings.digestDelta)
+    async def digester(self):
+        # SHOULD DISABLE BUTTONS BEFORE DIGESTING
+        try:
+            view = PostedView()
+            toDigest = [i async for i in self.bot.get_channel(1008464497574428803).history(limit=1)]
+            
+            if(len(toDigest) > 0):
+                toDigest = toDigest[0]
+                
+                url = instaBot.uploadAlbum(toDigest.content, "Caption")
+                view.add_item(discord.ui.Button(label="Post",style=discord.ButtonStyle.link,url=url))
+
+                await self.bot.get_channel(1008812515339276430).send(toDigest.content, files=[await f.to_file() for f in toDigest.attachments], view=view)
+                await toDigest.delete()
+            else:
+                await self.general.send(f"Nothing do digest 😁 - {time.ctime()}")
+                
+              
+        except Exception as e:
+            await self.general.send(f"Digest failed - {time.ctime()}😥 \n {e}")
             print(traceback.format_exc())
 
  
 
     @printer.before_loop
     async def before_printer(self):
-        print('Waiting...')
+        await self.bot.wait_until_ready()
+        
+    @digester.before_loop
+    async def before_printer(self):
         await self.bot.wait_until_ready()
         
 
-class CustomView(discord.ui.View):
-    
-    @discord.ui.button(label='Accept', style=discord.ButtonStyle.green)
+class UpcomingView(discord.ui.View):
+    @discord.ui.button(label='Accept', style=discord.ButtonStyle.success)
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
         
-        insta = InstaBot()
-        insta.uploadAlbum()
         
-                    
-        deletedSent = await interaction.guild.get_channel(1008812540744192120).send(interaction.message.content)
-        
-        await interaction.message.reply(deletedSent.jump_url)
-        await interaction.message.delete(delay=2.0)
+        await self.bot.get_channel(1008812515339276430).send(interaction.message.content, files=[await f.to_file() for f in interaction.message.attachments])
 
-    @discord.ui.button(label='Decline', style=discord.ButtonStyle.red)
+        
+        await interaction.response.defer()
+        await interaction.message.delete()
+        instaBot.uploadAlbum(interaction.message.content, "caption")
+
+    @discord.ui.button(label='Decline', style=discord.ButtonStyle.danger)
     async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
         # button = manage_components.create_button(style=ButtonStyle.URL, label="Your channel", url=f'https://discord.com/channels/{member.guild.id}/{channel.id}')
         
-        deletedSent = await interaction.guild.get_channel(1008812540744192120).send(interaction.message.content)
-        await interaction.message.delete(delay=2.0)
+        await interaction.message.delete()
+        await interaction.response.defer()
         
         # for child in self.children:
         #     child.disabled=True
         # await interaction.response.edit_message(view=self)
         
+class PostedView(discord.ui.View):
+    @discord.ui.button(label='Delete Post', style=discord.ButtonStyle.danger)
+    async def delete(self, interaction: discord.Interaction, button: discord.ui.Button):
+        
+        await self.bot.get_channel(1008812540744192120).send(interaction.message.content, files=[await f.to_file() for f in interaction.message.attachments])
+
+        
+        await interaction.response.defer()
+        await interaction.message.delete()
+        
+        instaBot.deleteAlbum(interaction.message.content, "caption")
         
 async def setup(bot):
     await bot.add_cog(Controller(bot))
