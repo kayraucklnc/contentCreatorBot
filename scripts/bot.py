@@ -1,7 +1,7 @@
 from reddit import redditScrapper
 
-app = redditScrapper("tifu")
-app.getRedditPostAsImage(postCount=1, commentCount=0, filter="day")[0].img.show()
+app = redditScrapper("showerthoughts")
+app.getRedditPostAsImage(postCount=1, commentCount=0, filter="week", isTesting=True)[0].img.show()
 
 
 # import pyttsx3

@@ -11,10 +11,9 @@ from reddit import redditScrapper
 class Settings:
     def __init__(self):
         self.commentAmount = 2
-        self.printerDelta = 60*1.6
-        self.digestDelta = 60*0.7
-        self.filterTime = "month"
-        self.subs = ["relationships", "explainlikeimfive", "outoftheloop", "tooafraidtoask", "askwomen", "showerthoughts", "askscience", "confessions", "askmen", "askreddit"]
+        self.printerDelta = 60*15
+        self.digestDelta = 60*100
+        self.filterTime = "hour"
         self.subs = ["askreddit", "showerthoughts", "askmen", "explainlikeimfive", "tooafraidtoask", "jokes", "unethicallifeprotips", "crazyideas"]
         self.mode = len(self.subs)-1
         
@@ -76,7 +75,7 @@ class Controller(commands.Cog):
                             post.img.save(image_binary, 'PNG')
                             image_binary.seek(0)
                             listOfImgs.append(discord.File(fp=image_binary, filename=f'{post.title}.png'))
-                   
+                
             await self.upcoming.send(postArr[0].title,files=listOfImgs, view=view)
             print("Images sent")
             
