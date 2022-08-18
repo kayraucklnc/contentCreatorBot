@@ -20,11 +20,11 @@ class TestSubmission:
             self.name = "TestAuthor"
     
     def __init__(self):      
-        # self.title = lorem.paragraph()
-        # self.selftext = lorem.paragraph()
+        self.title = " ".join([lorem.paragraph() for i in range(2)])
+        self.selftext = " ".join([lorem.paragraph() for i in range(5)])
         
-        self.title = 10*"a"
-        self.selftext = 1650*"a"
+        # self.title = 10*"a"
+        # self.selftext = 3000*"a"
         
         self.num_comments = 3600
         self.score = 25000
@@ -51,7 +51,7 @@ class redditScrapper:
         print("Initialized")
         self.sub = sub
         self.textWrapLen = 58
-        self.pageLength = 62
+        self.pageLength = 1300
         self.imageSize = 1000
         self.textWidth = 1000
         self.textHeight = 38
@@ -186,10 +186,10 @@ class redditScrapper:
     def getRedditPostAsImage(self, filter = "day", postCount = 1, commentCount = 4, saveOnCreate = False, isTesting = False):
         listOfPosts = []
         print("Gather Post Started")
-        subredditHelper = self.reddit.subreddit(self.sub)
+        subredditHelper = None if isTesting else self.reddit.subreddit(self.sub)
         submissionArray = [TestSubmission() for i in range(postCount)] if isTesting else subredditHelper.top(time_filter=filter, limit=postCount)        
-        subIconPath = TestSubmission().icon_img if ((not subredditHelper.icon_img) or isTesting or (len(subredditHelper.icon_img) == 0)) else subredditHelper.icon_img
-        isIconOnUrl = (not ((not subredditHelper.icon_img) or isTesting or (len(subredditHelper.icon_img) == 0)))
+        subIconPath = TestSubmission().icon_img if (isTesting or (not subredditHelper.icon_img) or (len(subredditHelper.icon_img) == 0)) else subredditHelper.icon_img
+        isIconOnUrl = (not (isTesting or (not subredditHelper.icon_img) or (len(subredditHelper.icon_img) == 0)))
             
         for submission in submissionArray:
             self.resetBG(self.imageSize)
@@ -197,28 +197,37 @@ class redditScrapper:
             content = submission.selftext
             name = submission.author.name if submission.author != None else "Unknown"
             
-            title = profanity.censor(title)
-            title = self.urlPattern.sub(r'\1', title)
+            pages = textwrap.wrap(content, width = self.pageLength - len(title))
             
-            content = profanity.censor(content)
-            content = self.urlPattern.sub(r'\1', content)
-                     
-            
-            bg = self.background.copy()
-            self.textHeight = self.setHeight(title, content)
-            self.blurBox(bg)
-            self.addTitleContent(title, bg, content=content)
-            self.addIcon(subIconPath, bg, int(self.imageSize/2-self.textHeight/2+self.elementPadding), isIconOnUrl)
-            self.addMediumCustomText(bg, "r/" + self.sub, (self.elementPadding*3 + 60, int(self.imageSize/2-self.textHeight/2+self.elementPadding)), "#FF4500", textAnchor="lt", storoke_fill="#000000", stroke_width=1)
-            self.addCustomText(bg, human_format(submission.score), (self.elementPadding + 30, int(self.imageSize/2-self.textHeight/2+self.elementPadding + 85)), "#fa6505")
-            self.addCustomText(bg, "/u/" + name, (self.imageSize - self.elementPadding, int(self.imageSize/2+self.textHeight/2-self.elementPadding)), "#ffffff", textAnchor = "rs")
-            self.addCustomText(bg, human_format(submission.num_comments), (self.elementPadding + 30, int(self.imageSize/2-self.textHeight/2+self.elementPadding + 110)), "#39ceff")
-            
-            
-            if(saveOnCreate):
-                bg.save("outputs/" + str(int(round(time.time() * 1000))) + " - " +  submission.author.name + ".jpg")
-            else:
-                listOfPosts.append(PostSubmission(title, name, bg, subIconPath, submission.url))
+            for count, page in enumerate(pages):    
+                title = profanity.censor(title)
+                title = self.urlPattern.sub(r'\1', title)
+                
+                page = profanity.censor(page)
+                page = self.urlPattern.sub(r'\1', page)
+                        
+                
+                bg = self.background.copy()
+                if(count == 0):
+                    self.textHeight = self.setHeight(title, page)
+                    self.blurBox(bg)
+                    self.addTitleContent(title, bg, content=page)
+                else:
+                    self.textHeight = self.setHeight(" ", page)
+                    self.blurBox(bg)
+                    self.addTitleContent(f"...{count + 1}/{len(pages)}...", bg, content=page)
+                    
+                self.addIcon(subIconPath, bg, int(self.imageSize/2-self.textHeight/2+self.elementPadding), isIconOnUrl)
+                self.addMediumCustomText(bg, "r/" + self.sub, (self.elementPadding*3 + 60, int(self.imageSize/2-self.textHeight/2+self.elementPadding)), "#FF4500", textAnchor="lt", storoke_fill="#000000", stroke_width=2)
+                self.addCustomText(bg, human_format(submission.score), (self.elementPadding + 30, int(self.imageSize/2-self.textHeight/2+self.elementPadding + 85)), "#fa6505")
+                self.addCustomText(bg, "/u/" + name, (self.imageSize - self.elementPadding, int(self.imageSize/2+self.textHeight/2-self.elementPadding)), "#ffffff", textAnchor = "rs")
+                self.addCustomText(bg, human_format(submission.num_comments), (self.elementPadding + 30, int(self.imageSize/2-self.textHeight/2+self.elementPadding + 110)), "#39ceff")
+                
+                
+                if(saveOnCreate):
+                    bg.save("outputs/" + str(int(round(time.time() * 1000))) + " - " +  submission.author.name + ".jpg")
+                else:
+                    listOfPosts.append(PostSubmission(title, name, bg, subIconPath, submission.url))
             
             for count, comment in enumerate(submission.comments):
                 if(commentCount == count):
