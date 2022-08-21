@@ -12,7 +12,7 @@ class Settings:
         self.commentAmount = 2
         self.printerDelta = 60*0.2
         self.digestDelta = 60*100
-        self.filterTime = "hour"
+        self.filterTime = "day"
         self.subs = ["askreddit", "unethicallifeprotips", "askmen", "explainlikeimfive", "tooafraidtoask", "jokes", "showerthoughts", "crazyideas"]
         self.mode = len(self.subs)-1
         
@@ -22,7 +22,7 @@ class Settings:
         return self.subs[self.mode]
 
 settings = Settings()
-settings.mode = 5
+settings.mode = 0
 instaBot = InstaBot()
 
 
@@ -33,9 +33,10 @@ class Controller(commands.Cog):
         self.upcoming = 1008464497574428803
         self.posted = 1008812515339276430
         self.deleted = 1008812540744192120
+        self.links = 1009948563226247238
         
         self.reddit = redditScrapper(settings.getSub())
-        self.printer.start()
+        # self.printer.start()
         # self.digester.start()
 
 
@@ -43,7 +44,12 @@ class Controller(commands.Cog):
     async def on_ready(self):
         print("Bot is online")
 
-        
+    
+    @commands.Cog.listener()
+    async def on_message(self, ctx):
+        if(not ctx.author.bot):
+            await ctx.add_reaction("👍")
+
     @commands.command(name="ping")
     async def ping(self, ctx):
         await ctx.channel.send("Pong!")                  

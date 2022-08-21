@@ -20,11 +20,11 @@ class TestSubmission:
             self.name = "TestAuthor"
     
     def __init__(self):      
-        self.title = " ".join([lorem.paragraph() for i in range(2)])
-        self.selftext = " ".join([lorem.paragraph() for i in range(5)])
+        # self.title = " ".join([lorem.paragraph() for i in range(2)])
+        # self.selftext = " ".join([lorem.paragraph() for i in range(5)])
         
-        # self.title = 10*"a"
-        # self.selftext = 3000*"a"
+        self.title = 10*"a"
+        self.selftext = 0*"a"
         
         self.num_comments = 3600
         self.score = 25000
@@ -199,35 +199,49 @@ class redditScrapper:
             
             pages = textwrap.wrap(content, width = self.pageLength - len(title))
             
-            for count, page in enumerate(pages):    
-                title = profanity.censor(title)
-                title = self.urlPattern.sub(r'\1', title)
-                
-                page = profanity.censor(page)
-                page = self.urlPattern.sub(r'\1', page)
-                        
-                
-                bg = self.background.copy()
-                if(count == 0):
-                    self.textHeight = self.setHeight(title, page)
-                    self.blurBox(bg)
-                    self.addTitleContent(title, bg, content=page)
-                else:
+            title = profanity.censor(title)
+            title = self.urlPattern.sub(r'\1', title)
+            
+            bg = self.background.copy()
+
+            self.textHeight = self.setHeight(title, pages[0] if len(pages) > 0 else "")
+            self.blurBox(bg)
+            self.addTitleContent(title, bg, content=pages[0] if len(pages) > 0 else "")
+            
+            self.addIcon(subIconPath, bg, int(self.imageSize/2-self.textHeight/2+self.elementPadding), isIconOnUrl)
+            self.addMediumCustomText(bg, "r/" + self.sub, (self.elementPadding*3 + 60, int(self.imageSize/2-self.textHeight/2+self.elementPadding)), "#FF4500", textAnchor="lt", storoke_fill="#000000", stroke_width=2)
+            self.addCustomText(bg, human_format(submission.score), (self.elementPadding + 30, int(self.imageSize/2-self.textHeight/2+self.elementPadding + 85)), "#fa6505")
+            self.addCustomText(bg, "/u/" + name, (self.imageSize - self.elementPadding, int(self.imageSize/2+self.textHeight/2-self.elementPadding)), "#ffffff", textAnchor = "rs")
+            self.addCustomText(bg, human_format(submission.num_comments), (self.elementPadding + 30, int(self.imageSize/2-self.textHeight/2+self.elementPadding + 110)), "#39ceff")
+                     
+            if(saveOnCreate):
+                bg.save("outputs/" + str(int(round(time.time() * 1000))) + " - " +  submission.author.name + " MAIN " + ".jpg")
+            else:
+                listOfPosts.append(PostSubmission(title, name, bg, subIconPath, submission.url))
+            
+            #For content that doesnt fit
+            if(len(pages) > 0):
+                for count, page in enumerate(pages[1:]): 
+                    page = profanity.censor(page)
+                    page = self.urlPattern.sub(r'\1', page)
+                    
+                    bg = self.background.copy()
+
                     self.textHeight = self.setHeight(" ", page)
                     self.blurBox(bg)
                     self.addTitleContent(f"...{count + 1}/{len(pages)}...", bg, content=page)
+                        
+                    self.addIcon(subIconPath, bg, int(self.imageSize/2-self.textHeight/2+self.elementPadding), isIconOnUrl)
+                    self.addMediumCustomText(bg, "r/" + self.sub, (self.elementPadding*3 + 60, int(self.imageSize/2-self.textHeight/2+self.elementPadding)), "#FF4500", textAnchor="lt", storoke_fill="#000000", stroke_width=2)
+                    self.addCustomText(bg, human_format(submission.score), (self.elementPadding + 30, int(self.imageSize/2-self.textHeight/2+self.elementPadding + 85)), "#fa6505")
+                    self.addCustomText(bg, "/u/" + name, (self.imageSize - self.elementPadding, int(self.imageSize/2+self.textHeight/2-self.elementPadding)), "#ffffff", textAnchor = "rs")
+                    self.addCustomText(bg, human_format(submission.num_comments), (self.elementPadding + 30, int(self.imageSize/2-self.textHeight/2+self.elementPadding + 110)), "#39ceff")
                     
-                self.addIcon(subIconPath, bg, int(self.imageSize/2-self.textHeight/2+self.elementPadding), isIconOnUrl)
-                self.addMediumCustomText(bg, "r/" + self.sub, (self.elementPadding*3 + 60, int(self.imageSize/2-self.textHeight/2+self.elementPadding)), "#FF4500", textAnchor="lt", storoke_fill="#000000", stroke_width=2)
-                self.addCustomText(bg, human_format(submission.score), (self.elementPadding + 30, int(self.imageSize/2-self.textHeight/2+self.elementPadding + 85)), "#fa6505")
-                self.addCustomText(bg, "/u/" + name, (self.imageSize - self.elementPadding, int(self.imageSize/2+self.textHeight/2-self.elementPadding)), "#ffffff", textAnchor = "rs")
-                self.addCustomText(bg, human_format(submission.num_comments), (self.elementPadding + 30, int(self.imageSize/2-self.textHeight/2+self.elementPadding + 110)), "#39ceff")
-                
-                
-                if(saveOnCreate):
-                    bg.save("outputs/" + str(int(round(time.time() * 1000))) + " - " +  submission.author.name + ".jpg")
-                else:
-                    listOfPosts.append(PostSubmission(title, name, bg, subIconPath, submission.url))
+                    
+                    if(saveOnCreate):
+                        bg.save("outputs/" + str(int(round(time.time() * 1000))) + " - " +  submission.author.name + ".jpg")
+                    else:
+                        listOfPosts.append(PostSubmission(title, name, bg, subIconPath, submission.url))
             
             for count, comment in enumerate(submission.comments):
                 if(commentCount == count):
@@ -254,9 +268,7 @@ class redditScrapper:
                     commentImage.save("outputs/" + str(int(round(time.time() * 1000))) + " - " +  submission.author.name + ".jpg")
                 else:
                     listOfPosts.append(PostSubmission(f"{title} - {str(count)}", commentAuthorName, commentImage, subIconPath, False))
-            
-            
-            
+               
             print(submission.author.name + "post is finished!")
 
 

@@ -1,5 +1,5 @@
 from pickle import TRUE
 from reddit import redditScrapper
 
-app = redditScrapper("yraam")
-app.getRedditPostAsImage(postCount=1, commentCount=0, filter="week", isTesting=True)[0].img.show()
+app = redditScrapper("askreddit")
+app.getRedditPostAsImage(postCount=1, commentCount=3, filter="week", isTesting=False, saveOnCreate=True)
