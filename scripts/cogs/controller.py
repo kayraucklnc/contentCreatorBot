@@ -12,7 +12,7 @@ from reddit import redditScrapper
 class Settings:
     def __init__(self):
         self.commentAmount = 2
-        self.printerDelta = 60 * 0.2
+        self.printerDelta = 60 * 60 * 5
         self.digestDelta = 60 * 100
         self.filterTime = "day"
         self.linkCommentCount = 2
@@ -41,7 +41,7 @@ class Controller(commands.Cog):
         self.links = 1009948563226247238
 
         self.reddit = redditScrapper(settings.getSub())
-        # self.printer.start()
+        self.printer.start()
         # self.digester.start()
 
     @commands.Cog.listener()

@@ -21,13 +21,13 @@ class TestSubmission:
     class Comment:
         def __init__(self):
             self.author = TestSubmission.author()
-            self.body = self.selftext = " ".join([lorem.paragraph() for i in range(15)])
+            self.body = self.selftext = " ".join([lorem.paragraph() for i in range(1)])
             self.stickied = False
             self.score = 60000
             
     def __init__(self):
         self.title = " ".join([lorem.paragraph() for i in range(1)])
-        self.selftext = " ".join([lorem.paragraph() for i in range(15)])
+        self.selftext = " ".join([lorem.paragraph() for i in range(1)])
 
         # self.title = 10 * "a"
         # self.selftext = 0 * "a"
@@ -76,12 +76,9 @@ class redditScrapper:
 
     def getPostFromLink(self, link, commentCount=4, saveOnCreate=False):
         listOfPosts = []
-        print("Gather Post Started")
-        submission = self.reddit.submission(link)
-        subName = link.lstrip("https://www.reddit.com/r/").partition("/")[0]
-        
-        subredditHelper = self.reddit.subreddit(subName)
+        print("Gather Post Started")    
         submission = praw.models.Submission(reddit=self.reddit, url=link)
+        subredditHelper = submission.subreddit()
         subIconPath = subredditHelper.icon_img
 
         self.fillArrayFromSubmission(listOfPosts, submission, commentCount, True, saveOnCreate, subIconPath)
@@ -216,6 +213,19 @@ class redditScrapper:
 
         return listOfPosts
 
+    def gildPhoto(self, im, gradient_magnitude=3.5):
+        if im.mode != 'RGBA':
+            im = im.convert('RGBA')
+        width, height = im.size
+        gradient = Image.new('L', (width, 1), color=0xFF)
+        for x in range(width):
+            # gradient.putpixel((width-x-1, 0), 150-x)
+            gradient.putpixel((width-x-1, 0), int(150 * (1 - gradient_magnitude * float(x)/width)))
+        alpha = gradient.resize(im.size)
+        black_im = Image.new('RGBA', (width, height), color=0x03BAFC) # i.e. black
+        black_im.putalpha(alpha)
+        return Image.alpha_composite(im, black_im)
+
     def fillArrayFromSubmission(self, listOfPosts, submission, commentCount, isIconOnUrl, saveOnCreate, subIconPath):
         self.resetBG(self.imageSize)
         title = submission.title
@@ -230,12 +240,16 @@ class redditScrapper:
         self.textHeight = self.setHeight(title, pages[0] if len(pages) > 0 else "")
         self.blurBox(bg)
         
+        if submission.score > 8000:
+            bg = self.gildPhoto(bg)
+        
+        
         self.addTitleContent(title, bg, content=pages[0] if len(pages) > 0 else "")
         self.addIconSubScore(bg, isIconOnUrl, name, subIconPath, submission)
         
         if saveOnCreate:
             bg.save("outputs/" + str(
-                int(round(time.time() * 100))) + " - " + submission.author.name + " - MAIN " + ".jpg")
+                int(round(time.time() * 100))) + " - " + submission.author.name + " - MAIN " + ".png")
         else:
             listOfPosts.append(PostSubmission(title, name, bg, subIconPath, submission.url))
         
