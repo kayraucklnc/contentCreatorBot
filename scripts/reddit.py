@@ -68,11 +68,7 @@ class redditScrapper:
         self.mediumFont = ImageFont.truetype("calibrib.ttf", 26)
         self.smallFont = ImageFont.truetype("calibrib.ttf", 21)
 
-        self.reddit = praw.Reddit(
-            client_id="CY6H6O3ng77h5rjiQNpXeg",
-            client_secret="n-cxPtR1QezeZGAu8GruZudbAGU4BQ",
-            user_agent="com.personalApp:0.0.1 by /u/enguzelharf",
-            check_for_async=False)
+        self.reddit = praw.Reddit()
 
     def getPostFromLink(self, link, commentCount=4, saveOnCreate=False):
         listOfPosts = []
