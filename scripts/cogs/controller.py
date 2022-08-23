@@ -168,6 +168,7 @@ class UpcomingView(discord.ui.View):
             await interaction.response.edit_message(view=self)
 
             files = [await f.to_file() for f in interaction.message.attachments]
+            print(files)
             content = interaction.message.content
             await interaction.message.delete()
             await self.other.bot.get_channel(1008812515339276430).send(content, files=files, view=self.postedView)

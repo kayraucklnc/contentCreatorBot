@@ -5,7 +5,7 @@ import os
 class InstaBot:
     def __init__(self):
         # self.cl = Client()
-        self.cl.login(os.getenv('instaUser'), os.getenv('instaPass'))
+        # self.cl.login(os.getenv('instaUser'), os.getenv('instaPass'))
         print("Insta bot running")
 
     def uploadAlbum(self, paths, caption):

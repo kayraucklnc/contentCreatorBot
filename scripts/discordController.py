@@ -23,6 +23,7 @@ async def load_extensions():
     for filename in os.listdir("scripts/cogs"):
         if filename.endswith(".py"):
             # cut off the .py from the file name
+            print(filename)
             await client.load_extension(f"cogs.{filename[:-3]}")
 
 
