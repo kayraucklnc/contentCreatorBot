@@ -1,5 +1,4 @@
 from PIL import Image
-import os
 
 from reddit import redditScrapper
 

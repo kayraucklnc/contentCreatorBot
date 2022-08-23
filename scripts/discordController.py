@@ -3,7 +3,9 @@ import discord
 from discord.ext import commands
 import os
 import asyncio
+from dotenv import load_dotenv
 
+load_dotenv()
 client = commands.Bot(command_prefix="!", intents=discord.Intents.all())
 
 
@@ -27,7 +29,7 @@ async def load_extensions():
 async def main():
     async with client:
         await load_extensions()
-        await client.start('')
+        await client.start(os.getenv('DISCORD_KEY'))
 
 
 asyncio.run(main())

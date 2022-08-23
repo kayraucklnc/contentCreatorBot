@@ -10,7 +10,8 @@ from util import human_format
 from better_profanity import profanity
 import time
 import lorem
-import re
+from dotenv import load_dotenv
+import os
 
 
 class TestSubmission:
@@ -68,7 +69,11 @@ class redditScrapper:
         self.mediumFont = ImageFont.truetype("calibrib.ttf", 26)
         self.smallFont = ImageFont.truetype("calibrib.ttf", 21)
 
-        self.reddit = praw.Reddit()
+        self.reddit = praw.Reddit(
+            client_id=os.getenv('client_id'),
+            client_secret=os.getenv('client_secret'),
+            user_agent=os.getenv('user_agent'),
+            check_for_async=False)
 
     def getPostFromLink(self, link, commentCount=4, saveOnCreate=False):
         listOfPosts = []
