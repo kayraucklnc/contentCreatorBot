@@ -1,9 +1,11 @@
 from instagrapi import Client
+from dotenv import load_dotenv
+import os
 
 class InstaBot:
     def __init__(self):
         # self.cl = Client()
-        # self.cl.login("interestingredditreadit", "yeKta2000?!?")
+        self.cl.login(os.getenv('instaUser'), os.getenv('instaPass'))
         print("Insta bot running")
 
     def uploadAlbum(self, paths, caption):
