@@ -56,7 +56,7 @@ class redditScrapper:
     def __init__(self, sub, bgres=1000):
         print("Initialized")
         self.sub = sub
-        self.gildMinAmount = 80
+        self.gildMinAmount = 8000
         self.textWrapLen = 58
         self.pageLength = 1300
         self.imageSize = 1000
@@ -120,13 +120,13 @@ class redditScrapper:
 
     def addCustomText(self, image, text, pos=(0, 0), textColor="#ffffff", textAnchor="ms", storoke_fill=None,
                       stroke_width=0):
-        text = profanity.censor(text)
+        # text = profanity.censor(text)
         draw = ImageDraw.Draw(image)
         draw.text(pos, text, textColor, font=self.smallFont, anchor=textAnchor)
 
     def addMediumCustomText(self, image, text, pos=(0, 0), textColor="#ffffff", textAnchor="ms", storoke_fill=None,
                             stroke_width=0):
-        text = profanity.censor(text)
+        # text = profanity.censor(text)
         draw = ImageDraw.Draw(image)
         draw.text(pos, text, textColor, font=self.mediumFont, anchor=textAnchor, stroke_fill=storoke_fill,
                   stroke_width=stroke_width)
@@ -236,7 +236,7 @@ class redditScrapper:
         content = submission.selftext
         name = submission.author.name if submission.author is not None else "Unknown"
         pages = textwrap.wrap(content, width=self.pageLength - len(title))
-        title = profanity.censor(title)
+        # title = profanity.censor(title)
         title = self.urlPattern.sub(r'\1', title)
         bg = self.background.copy()
         
@@ -262,7 +262,7 @@ class redditScrapper:
         if len(pages) > 0:
             for count, page in enumerate(pages[1:]):
                 imageCount += 1
-                page = profanity.censor(page)
+                # page = profanity.censor(page)
                 page = self.urlPattern.sub(r'\1', page)
 
                 bg = self.background.copy()
@@ -300,7 +300,7 @@ class redditScrapper:
             for page in commentPages:
                 imageCount += 1
                 commentBody = page
-                commentBody = profanity.censor(commentBody)
+                # commentBody = profanity.censor(commentBody)
                 commentBody = self.urlPattern.sub(r'\1', commentBody)
 
                 commentAuthorName = comment.author.name if comment.author else "[deleted]"

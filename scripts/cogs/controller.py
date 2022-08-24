@@ -1,5 +1,4 @@
 import asyncio
-import signal
 from instagramBot import InstaBot
 import traceback
 import io
@@ -8,37 +7,18 @@ import discord
 import validators
 from discord.ext import commands, tasks
 from reddit import redditScrapper
-import sys
-import json
-
-dataBase = dict()
-try:
-    with open('databse.json') as infile:
-        data = json.load(infile)
-except:
-    pass
-
-
-def signal_handler(signal, frame):
-    with open('databse.json', 'w') as outfile:
-        json.dump(dataBase, outfile)
-    print ('Dumped to file')
-    sys.exit(0)
-    sys.pause()
-
-signal.signal(signal.SIGINT, signal_handler)
 
 class Settings:
     def __init__(self):
         self.defaultCaption = "#reddit"
-        self.commentAmount = 1
-        self.linkCommentCount = 0
-        self.printerDelta = 60 * 5
+        self.commentAmount = 8
+        self.linkCommentCount = 8
+        self.printerDailyDelta = 60 * 5
+        self.printerWeeklyDelta = 60 * 60 * 24 * 7
         self.digestDelta = 60 * 60 * 8
-        self.filterTime = "day"
         self.subs = ["askreddit", "askmen", 
                      "explainlikeimfive", "tooafraidtoask", 
-                     "jokes", "showerthoughts", "crazyideas"]
+                     "jokes", "showerthoughts", "tifu"]
         self.mode = len(self.subs) - 1
 
     def getSub(self):
@@ -48,7 +28,7 @@ class Settings:
 
 
 settings = Settings()
-# instaBot = InstaBot()
+instaBot = InstaBot()
 
 
 class Controller(commands.Cog):
@@ -61,19 +41,22 @@ class Controller(commands.Cog):
         self.links = 1009948563226247238
 
         self.reddit = redditScrapper(settings.getSub())
-        # self.dailyPrinter.start()
-        # self.digester.start()
+        self.dailyPrinter.start()
+        self.digester.start()
 
     @commands.Cog.listener()
     async def on_ready(self):
         print("Bot is online")
+
+    async def cog_command_error(self, ctx, error):
+        await ctx.send(f"An error occurred in the Test cog: {error}")
 
     @commands.Cog.listener()
     async def on_message(self, ctx):
         if not ctx.author.bot:
             if ctx.channel.id == self.links:
                 await self.linkSent(ctx)
-
+    
     @commands.command(name="showsubs")
     async def showsubs(self, ctx):
         await ctx.channel.send(f"Sub list is {settings.subs}")
@@ -83,22 +66,60 @@ class Controller(commands.Cog):
         settings.subs.append(sub)
         await ctx.channel.send(f"New sub list is {settings.subs}")
         
+    @commands.command(name="removesub")
+    async def removesub(self, ctx, sub):
+        settings.subs.remove(sub)
+        await ctx.channel.send(f"New sub list is {settings.subs}")
+        
     @commands.command(name="nextsub")
     async def nextsub(self, ctx):
         await ctx.channel.send(f"Next sub is - {settings.subs[(settings.mode + 1) % len(settings.subs) - 1]}")
         
     @commands.command(name="printnow")
-    async def printnow(self, ctx):
-        await self.dailyPrinter()
-
+    async def printnow(self, ctx, time):
+        await ctx.message.add_reaction("⏳")
+        await self.printerMain(time)
+        await ctx.message.add_reaction("✅")
+        
+    @commands.command(name="printnowsub")
+    async def printnowsub(self, ctx, time, sub):
+        await ctx.message.add_reaction("⏳")
+        settings.mode = settings.mode.index(sub)
+        await self.printerMain(time)
+        await ctx.message.add_reaction("✅")
+        
+    @commands.command(name="digestnow")
+    async def digestnow(self, ctx):
+        await self.digester()
+        
+    @commands.command(name="printertime")
+    async def printertime(self, ctx, seconds):
+        settings.printerDailyDelta = int(seconds)
+        self.dailyPrinter.change_interval(seconds=settings.printerDailyDelta)
+        await ctx.message.add_reaction("✅")
+        
+    @commands.command(name="digesttime")
+    async def digesttime(self, ctx, seconds):
+        settings.digestDelta = int(seconds)
+        self.digester.change_interval(seconds=settings.digestDelta)
+        await ctx.message.add_reaction("✅")
+        
+    @commands.command(name="showsettings")
+    async def showsettings(self, ctx):
+        await ctx.channel.send(vars(settings))
+        
+    @commands.command(name="commentcount")
+    async def showsettings(self, ctx, count):
+        settings.commentAmount = count
+        settings.linkCommentCount = count
+        await ctx.message.add_reaction("✅")
 
     @commands.command()
     async def purge(self, ctx):
         await ctx.channel.purge()
 
-    def subredditPrinter(self):
-        postArr = self.reddit.getRedditPostAsImage(postCount=1, commentCount=settings.commentAmount,
-                                                   filter=settings.filterTime, isTesting=False)
+    def subredditPrinter(self, filter):
+        postArr = self.reddit.getRedditPostAsImage(postCount=1, commentCount=settings.commentAmount, filter=filter, isTesting=False)
         self.reddit.changeSub(settings.getSub())
 
         listOfImgs = self.arrToListOFImages(postArr)
@@ -121,13 +142,20 @@ class Controller(commands.Cog):
                 listOfImgs.append(discord.File(fp=image_binary, filename=f'{post.title}.png'))
         return listOfImgs
 
-    @tasks.loop(seconds=settings.printerDelta)
+    @tasks.loop(seconds=settings.printerDailyDelta)
     async def dailyPrinter(self):
+        await self.printerMain("day")
+        
+    @tasks.loop(seconds=settings.printerWeeklyDelta)
+    async def weeklyPrinter(self):
+        await self.printerMain("week")
+
+    async def printerMain(self, time):
         try:
             view = UpcomingView(self)
             print("------- Creating Images -------")
 
-            postArr, listOfImgs = await asyncio.to_thread(self.subredditPrinter)
+            postArr, listOfImgs = await asyncio.to_thread(self.subredditPrinter, time)
             view.add_item(discord.ui.Button(label="Post", style=discord.ButtonStyle.link, url=postArr[0].url))
 
             await self.bot.get_channel(self.upcoming).send(postArr[0].title, files=listOfImgs, view=view)
@@ -151,7 +179,7 @@ class Controller(commands.Cog):
                 files = [await f.to_file() for f in toDigest.attachments]
 
                 await self.bot.get_channel(self.posted).send(toDigest.content, files=files, view=view)
-                # instaBot.uploadAlbum(files, hash(toDigest.content), toDigest.content +  settings.defaultCaption)
+                instaBot.uploadAlbum(files, hash(toDigest.content), toDigest.content +  settings.defaultCaption)
                 
                 # To add the url for the post itself.
                 # view.add_item(discord.ui.Button(label="Post", style=discord.ButtonStyle.link, url=url))
@@ -165,12 +193,19 @@ class Controller(commands.Cog):
             await self.bot.get_channel(self.general).send(f"{time.ctime()} - Digest failed - 😥 \n {e}")
             print(traceback.format_exc())
 
+    @weeklyPrinter.before_loop
+    async def before_weeklyPrinter(self):
+        await asyncio.sleep(settings.printerWeeklyDelta)
+        await self.bot.wait_until_ready()
+        
     @dailyPrinter.before_loop
     async def before_printer(self):
+        await asyncio.sleep(settings.printerDailyDelta)
         await self.bot.wait_until_ready()
     
     @digester.before_loop
     async def before_digester(self):
+        await asyncio.sleep(settings.digestDelta)
         await self.bot.wait_until_ready()
 
     async def linkSent(self, ctx):

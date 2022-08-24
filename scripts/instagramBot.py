@@ -24,10 +24,10 @@ class InstaBot:
             paths.append(f"scripts/toSend/{count}-image_scaled.jpg")
         
         
-        # media = self.cl.album_upload(
-        #     paths,
-        #     caption,
-        # )
+        media = self.cl.album_upload(
+            paths,
+            caption,
+        )
         
         print(f"Album is uploaded - {caption}")
         # return media.pk
