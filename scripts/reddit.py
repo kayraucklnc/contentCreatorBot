@@ -42,19 +42,21 @@ class TestSubmission:
 
 
 class PostSubmission:
-    def __init__(self, title, author, img, icon_img, url, isPost=True):
+    def __init__(self, title, author, img, icon_img, url, id, isPost=True):
         self.title = title
         self.author = author
         self.img = img
         self.icon_img = icon_img
         self.isPost = isPost
         self.url = url
+        self.id = id
 
 
 class redditScrapper:
     def __init__(self, sub, bgres=1000):
         print("Initialized")
         self.sub = sub
+        self.gildMinAmount = 80
         self.textWrapLen = 58
         self.pageLength = 1300
         self.imageSize = 1000
@@ -79,7 +81,7 @@ class redditScrapper:
         listOfPosts = []
         print("Gather Post Started")    
         submission = praw.models.Submission(reddit=self.reddit, url=link)
-        subredditHelper = submission.subreddit()
+        subredditHelper = submission.subreddit
         subIconPath = subredditHelper.icon_img
 
         self.fillArrayFromSubmission(listOfPosts, submission, commentCount, True, saveOnCreate, subIconPath)
@@ -241,7 +243,7 @@ class redditScrapper:
         self.textHeight = self.setHeight(title, pages[0] if len(pages) > 0 else "")
         self.blurBox(bg)
         
-        if submission.score > 8000:
+        if submission.score > self.gildMinAmount:
             bg = self.gildPhoto(bg)
         
         
@@ -252,7 +254,7 @@ class redditScrapper:
             bg.save("outputs/" + str(
                 int(round(time.time() * 100))) + " - " + submission.author.name + " - MAIN " + ".png")
         else:
-            listOfPosts.append(PostSubmission(title, name, bg, subIconPath, submission.url))
+            listOfPosts.append(PostSubmission(title, name, bg, subIconPath, submission.url, submission.id))
         
         imageCount = 1
             
@@ -267,6 +269,9 @@ class redditScrapper:
 
                 self.textHeight = self.setHeight(" ", page)
                 self.blurBox(bg)
+                if submission.score > self.gildMinAmount:
+                    bg = self.gildPhoto(bg)
+                
                 self.addTitleContent(f"...{count + 1}/{len(pages)}...", bg, content=page)
 
                 self.addIconSubScore(bg, isIconOnUrl, name, subIconPath, submission)
@@ -275,7 +280,7 @@ class redditScrapper:
                     bg.save(
                         "outputs/" + str(int(round(time.time() * 1000))) + " - " + submission.author.name + ".jpg")
                 else:
-                    listOfPosts.append(PostSubmission(title, name, bg, subIconPath, submission.url))
+                    listOfPosts.append(PostSubmission(title, name, bg, subIconPath, submission.url, submission.id))
                     
         for count, comment in enumerate(submission.comments):
             if imageCount > 10:
@@ -303,6 +308,9 @@ class redditScrapper:
 
                 self.textHeight = self.setHeight(commentBody)
                 self.blurBox(commentImage)
+                if comment.score > self.gildMinAmount:
+                    commentImage = self.gildPhoto(commentImage)
+                
                 self.addTitleContent(commentBody, commentImage, "#e8e8e8", isHeadEmpty=False)
                 self.addScoreAuthor(comment, commentAuthorName, commentImage)
                 self.addIcon(subIconPath, commentImage,
@@ -312,7 +320,7 @@ class redditScrapper:
                     commentImage.save(
                         "outputs/" + str(int(round(time.time() * 1000))) + " - " + submission.author.name + ".jpg")
                 else:
-                    listOfPosts.append(PostSubmission(f"{title} - {str(count)}", commentAuthorName, commentImage, subIconPath, False))
+                    listOfPosts.append(PostSubmission(f"{title} - {str(count)}", commentAuthorName, commentImage, subIconPath, submission.id, False))
                     
         print(submission.author.name + "post is finished!")
 

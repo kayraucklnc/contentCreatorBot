@@ -6,6 +6,7 @@ import asyncio
 from dotenv import load_dotenv
 
 load_dotenv()
+
 client = commands.Bot(command_prefix="!", intents=discord.Intents.all())
 
 
@@ -23,7 +24,6 @@ async def load_extensions():
     for filename in os.listdir("scripts/cogs"):
         if filename.endswith(".py"):
             # cut off the .py from the file name
-            print(filename)
             await client.load_extension(f"cogs.{filename[:-3]}")
 
 

@@ -1,4 +1,5 @@
 import asyncio
+import signal
 from instagramBot import InstaBot
 import traceback
 import io
@@ -7,17 +8,37 @@ import discord
 import validators
 from discord.ext import commands, tasks
 from reddit import redditScrapper
+import sys
+import json
 
+dataBase = dict()
+try:
+    with open('databse.json') as infile:
+        data = json.load(infile)
+except:
+    pass
+
+
+def signal_handler(signal, frame):
+    with open('databse.json', 'w') as outfile:
+        json.dump(dataBase, outfile)
+    print ('Dumped to file')
+    sys.exit(0)
+    sys.pause()
+
+signal.signal(signal.SIGINT, signal_handler)
 
 class Settings:
     def __init__(self):
-        self.commentAmount = 2
-        self.printerDelta = 60 * 60 * 5
-        self.digestDelta = 60 * 100
+        self.defaultCaption = "#reddit"
+        self.commentAmount = 1
+        self.linkCommentCount = 0
+        self.printerDelta = 60 * 5
+        self.digestDelta = 60 * 60 * 8
         self.filterTime = "day"
-        self.linkCommentCount = 2
-        self.subs = ["askreddit", "unethicallifeprotips", "askmen", "explainlikeimfive", "tooafraidtoask", "jokes",
-                     "showerthoughts", "crazyideas"]
+        self.subs = ["askreddit", "askmen", 
+                     "explainlikeimfive", "tooafraidtoask", 
+                     "jokes", "showerthoughts", "crazyideas"]
         self.mode = len(self.subs) - 1
 
     def getSub(self):
@@ -27,8 +48,7 @@ class Settings:
 
 
 settings = Settings()
-settings.mode = 0
-instaBot = InstaBot()
+# instaBot = InstaBot()
 
 
 class Controller(commands.Cog):
@@ -41,7 +61,7 @@ class Controller(commands.Cog):
         self.links = 1009948563226247238
 
         self.reddit = redditScrapper(settings.getSub())
-        self.printer.start()
+        # self.dailyPrinter.start()
         # self.digester.start()
 
     @commands.Cog.listener()
@@ -54,9 +74,23 @@ class Controller(commands.Cog):
             if ctx.channel.id == self.links:
                 await self.linkSent(ctx)
 
-    @commands.command(name="ping")
-    async def ping(self, ctx):
-        await ctx.channel.send("Pong!")
+    @commands.command(name="showsubs")
+    async def showsubs(self, ctx):
+        await ctx.channel.send(f"Sub list is {settings.subs}")
+        
+    @commands.command(name="addsub")
+    async def addsub(self, ctx, sub):
+        settings.subs.append(sub)
+        await ctx.channel.send(f"New sub list is {settings.subs}")
+        
+    @commands.command(name="nextsub")
+    async def nextsub(self, ctx):
+        await ctx.channel.send(f"Next sub is - {settings.subs[(settings.mode + 1) % len(settings.subs) - 1]}")
+        
+    @commands.command(name="printnow")
+    async def printnow(self, ctx):
+        await self.dailyPrinter()
+
 
     @commands.command()
     async def purge(self, ctx):
@@ -88,7 +122,7 @@ class Controller(commands.Cog):
         return listOfImgs
 
     @tasks.loop(seconds=settings.printerDelta)
-    async def printer(self):
+    async def dailyPrinter(self):
         try:
             view = UpcomingView(self)
             print("------- Creating Images -------")
@@ -102,33 +136,41 @@ class Controller(commands.Cog):
         except Exception as e:
             await self.bot.get_channel(self.general).send(f"Failed 😥  ```{e}```")
             print(traceback.format_exc())
-
+            
+    @tasks.loop(seconds=settings.digestDelta)
     async def digester(self):
         # SHOULD DISABLE BUTTONS BEFORE DIGESTING
         try:
             view = PostedView()
-            toDigest = [i async for i in self.bot.get_channel(1008464497574428803).history(limit=1)]
+            toDigest = [i async for i in self.bot.get_channel(self.upcoming).history(limit=1)]
 
-            if len(toDigest) > 0:
+            if len(toDigest) > 0 and len(toDigest[0].attachments) > 0:
                 toDigest = toDigest[0]
+                await toDigest.add_reaction("⏳")
+                
+                files = [await f.to_file() for f in toDigest.attachments]
 
-                url = instaBot.uploadAlbum(toDigest.content, "Caption")
-                view.add_item(discord.ui.Button(label="Post", style=discord.ButtonStyle.link, url=url))
-
-                await self.bot.get_channel(self.posted).send(toDigest.content,
-                                                             files=[await f.to_file() for f in toDigest.attachments],
-                                                             view=view)
+                await self.bot.get_channel(self.posted).send(toDigest.content, files=files, view=view)
+                # instaBot.uploadAlbum(files, hash(toDigest.content), toDigest.content +  settings.defaultCaption)
+                
+                # To add the url for the post itself.
+                # view.add_item(discord.ui.Button(label="Post", style=discord.ButtonStyle.link, url=url))
+                
+                await toDigest.add_reaction("✅")
                 await toDigest.delete()
             else:
-                await self.bot.get_channel(self.general).send(f"Nothing do digest 😁 - {time.ctime()}")
-
-
+                await self.bot.get_channel(self.general).send(f"{time.ctime()} - Nothing do digest 💤💤💤")
+                
         except Exception as e:
-            await self.bot.get_channel(self.general).send(f"Digest failed - {time.ctime()}😥 \n {e}")
+            await self.bot.get_channel(self.general).send(f"{time.ctime()} - Digest failed - 😥 \n {e}")
             print(traceback.format_exc())
 
-    @printer.before_loop
+    @dailyPrinter.before_loop
     async def before_printer(self):
+        await self.bot.wait_until_ready()
+    
+    @digester.before_loop
+    async def before_digester(self):
         await self.bot.wait_until_ready()
 
     async def linkSent(self, ctx):
@@ -168,14 +210,14 @@ class UpcomingView(discord.ui.View):
             await interaction.response.edit_message(view=self)
 
             files = [await f.to_file() for f in interaction.message.attachments]
-            print(files)
             content = interaction.message.content
             await interaction.message.delete()
             await self.other.bot.get_channel(1008812515339276430).send(content, files=files, view=self.postedView)
+            
+            instaBot.uploadAlbum(files, hash(interaction.message.content), interaction.message.content + settings.defaultCaption)
         except:
             print(traceback.format_exc())
-
-        instaBot.uploadAlbum(interaction.message.content, "caption")
+            
 
     @discord.ui.button(label='Decline', style=discord.ButtonStyle.danger)
     async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
