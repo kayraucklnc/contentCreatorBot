@@ -93,9 +93,9 @@ class redditScrapper:
 
     def resetBG(self, res):
         # response = requests.get('https://picsum.photos/' + str(res))
-        # response = requests.get(f"https://picsum.photos/{res}/{res}")
-        # self.background = Image.open(BytesIO(response.content))
-        self.background = Image.open("./outputs/pic.jpg")
+        response = requests.get(f"https://picsum.photos/{res}/{res}")
+        self.background = Image.open(BytesIO(response.content))
+        # self.background = Image.open("./outputs/pic.jpg")
         enhancer = ImageEnhance.Brightness(self.background)
         self.background = enhancer.enhance(0.6)
 
