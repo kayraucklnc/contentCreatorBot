@@ -282,7 +282,7 @@ class redditScrapper:
                 else:
                     listOfPosts.append(PostSubmission(title, name, bg, subIconPath, submission.url, submission.id))
             
-        submission.replace_more()
+        submission.comments.replace_more()
         for count, comment in enumerate(submission.comments):
             if imageCount > 10:
                 break
