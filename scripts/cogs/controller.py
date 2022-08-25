@@ -41,8 +41,8 @@ class Controller(commands.Cog):
         self.links = 1009948563226247238
 
         self.reddit = redditScrapper(settings.getSub())
-        self.dailyPrinter.start()
-        self.digester.start()
+        # self.dailyPrinter.start()
+        # self.digester.start()
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -109,7 +109,7 @@ class Controller(commands.Cog):
         await ctx.channel.send(vars(settings))
         
     @commands.command(name="commentcount")
-    async def showsettings(self, ctx, count):
+    async def commentcount(self, ctx, count):
         settings.commentAmount = count
         settings.linkCommentCount = count
         await ctx.message.add_reaction("✅")
@@ -250,7 +250,8 @@ class UpcomingView(discord.ui.View):
             await self.other.bot.get_channel(1008812515339276430).send(content, files=files, view=self.postedView)
             
             instaBot.uploadAlbum(files, hash(interaction.message.content), interaction.message.content + settings.defaultCaption)
-        except:
+        except Exception as e:
+            await self.other.bot.get_channel(1008439697678287010).send(e)
             print(traceback.format_exc())
             
 
@@ -262,7 +263,8 @@ class UpcomingView(discord.ui.View):
             await interaction.response.edit_message(view=self)
 
             await interaction.message.delete()
-        except:
+        except Exception as e:
+            await self.other.bot.get_channel(1008439697678287010).send(e)
             print(traceback.format_exc())
 
 
