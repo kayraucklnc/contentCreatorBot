@@ -13,7 +13,7 @@ class Settings:
         self.defaultCaption = "#reddit"
         self.commentAmount = 8
         self.linkCommentCount = 8
-        self.printerDailyDelta = 60 * 5
+        self.printerDailyDelta = 60 * 60 * 5
         self.printerWeeklyDelta = 60 * 60 * 24 * 7
         self.digestDelta = 60 * 60 * 8
         self.subs = ["askreddit", "askmen", 
@@ -57,6 +57,11 @@ class Controller(commands.Cog):
             if ctx.channel.id == self.links:
                 await self.linkSent(ctx)
     
+    @commands.command(name="changecaption")
+    async def changecaption(self, ctx, cap):
+        settings.defaultCaption = cap
+        await ctx.channel.send(f"Default caption {settings.defaultCaption}")
+        
     @commands.command(name="showsubs")
     async def showsubs(self, ctx):
         await ctx.channel.send(f"Sub list is {settings.subs}")
