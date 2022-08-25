@@ -41,8 +41,8 @@ class Controller(commands.Cog):
         self.links = 1009948563226247238
 
         self.reddit = redditScrapper(settings.getSub())
-        # self.dailyPrinter.start()
-        # self.digester.start()
+        self.dailyPrinter.start()
+        self.digester.start()
 
     @commands.Cog.listener()
     async def on_ready(self):
