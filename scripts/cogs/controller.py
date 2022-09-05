@@ -89,7 +89,7 @@ class Controller(commands.Cog):
     @commands.command(name="printnowsub")
     async def printnowsub(self, ctx, time, sub):
         await ctx.message.add_reaction("⏳")
-        settings.mode = settings.mode.index(sub)
+        settings.mode = settings.subs.index(sub)
         await self.printerMain(time)
         await ctx.message.add_reaction("✅")
         
